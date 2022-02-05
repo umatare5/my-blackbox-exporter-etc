@@ -1,0 +1,75 @@
+---
+kind: pipeline
+type: ssh
+name: Deployment
+
+server:
+  host: exp1.local
+  user: drone
+  ssh_key:
+    from_secret: id_ed25519-drone
+
+trigger:
+  branch:
+  - main
+
+clone:
+  disable: true
+
+# Variables Reference
+# https://docs.drone.io/pipeline/environment/reference/drone-tag/
+
+steps:
+  - name: clone
+    commands:
+      - git clone git@github.com:${DRONE_REPO} .
+  - name: check
+    commands:
+      - echo "Skipped."
+  - name: copy
+    commands:
+      - sudo rsync -av --exclude='.git/' . /etc/blackbox-exporter/
+      - sudo chown --recursive nobody:root /etc/blackbox-exporter/
+  - name: reload
+    commands:
+      - sudo docker kill --signal=SIGHUP blackbox-exporter
+
+---
+kind: pipeline
+type: docker
+name: Notification
+
+depends_on:
+- Deployment
+
+clone:
+  disable: true
+
+steps:
+  # Docs - Reference
+  # https://docs.drone.io/pipeline/environment/reference/
+  # How to Setup Slack and Drone Slack Blame
+  # https://blog.kerkerj.in/2020/11/how-to-setup-slack-and-drone-slack-blame/
+  - name: slack
+    image: plugins/slack-blame
+    settings:
+      channel: notifications
+      token:
+        from_secret: slack_bot_oauth_token
+      mapping:
+        myGithubUsername: mySlackDisplayName
+        teammate1GithubUsername: teammate1SlackDisplayName
+      success_template: |
+        <${DRONE_REPO_LINK}|${DRONE_REPO}>
+        Commit: <${DRONE_COMMIT_LINK}|{{ truncate build.commit 8 }}> by ${DRONE_COMMIT_AUTHOR}
+        {{#if $DRONE_PULL_REQUEST}}
+          <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/${DRONE_PULL_REQUEST}|Pull Request: #${DRONE_PULL_REQUEST}>
+        {{/if}}
+        Pipeline Result: <http://web1.local:8080/${DRONE_REPO}/{{ build.number }}|#{{ build.number }}> (type: `{{ build.event }}`)
+      failure_template: |
+        <${DRONE_REPO_LINK}|${DRONE_REPO}>
+        Commit: <${DRONE_COMMIT_LINK}|{{ truncate build.commit 8 }}> by ${DRONE_COMMIT_AUTHOR}
+        {{#if $DRONE_PULL_REQUEST}}
+          <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/${DRONE_PULL_REQUEST}|Pull Request: #${DRONE_PULL_REQUEST}>
+        {{/if}}
+        Pipeline Result: <http://web1.local:8080/${DRONE_REPO}/{{ build.number }}|#{{ build.number }}> (type: `{{ build.event }}`)

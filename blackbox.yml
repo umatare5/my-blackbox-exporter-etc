@@ -1,0 +1,39 @@
+modules:
+  icmp:
+    prober: icmp
+    icmp:
+      preferred_ip_protocol: "ip4"
+  icmp_v6:
+    prober: icmp
+    icmp:
+      preferred_ip_protocol: "ip6"
+  http_get:
+    prober: http
+    http:
+      preferred_ip_protocol: "ip4"
+  http_get_v6:
+    prober: http
+    http:
+      preferred_ip_protocol: "ip6"
+  http_post:
+    prober: http
+    http:
+      method: POST
+      headers:
+        Content-Type: application/json
+      body: "{}"
+      preferred_ip_protocol: "ip4"
+  http_post_v6:
+    prober: http
+    http:
+      method: POST
+      headers:
+        Content-Type: application/json
+      body: "{}"
+      preferred_ip_protocol: "ip6"
+  http_shamaison_no_room:
+    prober: http
+    timeout: 5s
+    http:
+      fail_if_body_matches_regexp:
+        - 'この建物に現在空室のお部屋はございません。'
