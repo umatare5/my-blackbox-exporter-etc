@@ -16,9 +16,8 @@ trigger:
 clone:
   disable: true
 
-# Variables Reference
-# https://docs.drone.io/pipeline/environment/reference/drone-tag/
-
+# Docs - Environment Reference
+# https://docs.drone.io/pipeline/environment/reference/
 steps:
   - name: clone
     commands:
@@ -39,17 +38,26 @@ kind: pipeline
 type: docker
 name: Notification
 
-depends_on:
-- Deployment
-
 clone:
   disable: true
 
+# Passing status of depended pipelines.
+depends_on: [ Deployment ]
+trigger:
+  status: [ success, failure ]
+
+globals:
+  - &common_template |
+    <${DRONE_REPO_LINK}|${DRONE_REPO}>
+    Commit: <${DRONE_COMMIT_LINK}|{{ truncate build.commit 8 }}> by ${DRONE_COMMIT_AUTHOR}
+    {{#if $DRONE_PULL_REQUEST}}
+      <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/${DRONE_PULL_REQUEST}|Pull Request: #${DRONE_PULL_REQUEST}>
+    {{/if}}
+    Pipeline Result: <http://web1.local:8080/${DRONE_REPO}/{{ build.number }}|#{{ build.number }}> (type: `{{ build.event }}`)
+
+# Docs - Environment Reference
+# https://docs.drone.io/pipeline/environment/reference/
 steps:
-  # Docs - Reference
-  # https://docs.drone.io/pipeline/environment/reference/
-  # How to Setup Slack and Drone Slack Blame
-  # https://blog.kerkerj.in/2020/11/how-to-setup-slack-and-drone-slack-blame/
   - name: slack
     image: plugins/slack-blame
     settings:
@@ -58,18 +66,5 @@ steps:
         from_secret: slack_bot_oauth_token
       mapping:
         myGithubUsername: mySlackDisplayName
-        teammate1GithubUsername: teammate1SlackDisplayName
-      success_template: |
-        <${DRONE_REPO_LINK}|${DRONE_REPO}>
-        Commit: <${DRONE_COMMIT_LINK}|{{ truncate build.commit 8 }}> by ${DRONE_COMMIT_AUTHOR}
-        {{#if $DRONE_PULL_REQUEST}}
-          <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/${DRONE_PULL_REQUEST}|Pull Request: #${DRONE_PULL_REQUEST}>
-        {{/if}}
-        Pipeline Result: <http://web1.local:8080/${DRONE_REPO}/{{ build.number }}|#{{ build.number }}> (type: `{{ build.event }}`)
-      failure_template: |
-        <${DRONE_REPO_LINK}|${DRONE_REPO}>
-        Commit: <${DRONE_COMMIT_LINK}|{{ truncate build.commit 8 }}> by ${DRONE_COMMIT_AUTHOR}
-        {{#if $DRONE_PULL_REQUEST}}
-          <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/${DRONE_PULL_REQUEST}|Pull Request: #${DRONE_PULL_REQUEST}>
-        {{/if}}
-        Pipeline Result: <http://web1.local:8080/${DRONE_REPO}/{{ build.number }}|#{{ build.number }}> (type: `{{ build.event }}`)
+      success_template: *common_template
+      failure_template: *common_template
