@@ -32,7 +32,7 @@ steps:
       - sudo chown --recursive nobody:root /etc/blackbox-exporter/
   - name: reload
     commands:
-      - sudo docker kill --signal=SIGHUP blackbox-exporter
+      - sudo docker kill --signal=SIGHUP blackbox_exporter
 
 ---
 kind: pipeline
